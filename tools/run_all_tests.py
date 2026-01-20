@@ -25,6 +25,7 @@ def main():
     tests = [
         tools_dir / "test_navigation_back.py",
         tools_dir / "test_navigation_next.py",
+        tools_dir / "verify_assets.py",
     ]
     
     print("=" * 70)

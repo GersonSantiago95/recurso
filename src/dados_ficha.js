@@ -5,6 +5,7 @@ const dadosFicha = {
     descricaoFisica: "xxx f : il. ; XX cm + X Tipo (XX p./il./XX cm/son., color.)",
     modoAcesso: "Modo de acesso: http://www....",
     orientador: "Orientador(a): Prof. Dr. Evandro Antonio Corrêa",
+    dissertacaoInfo: "Dissertação (Mestrado) – Programa de Mestrado Profissional em Educação Física em Rede Nacional – ProEF do Instituto Federal do Sul de Minas, Muzambinho, 2026.",
     descritores: "1 Descritor. 2. Descritor. 3 . Descritor. I. Autor II. Título."
 };
 

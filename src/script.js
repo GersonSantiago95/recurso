@@ -1,4 +1,4 @@
-// Sistema de progresso das aulas (Multi-Page Version)
+// Sistema de progresso e renderização das aulas (Multi-Page Version)
 
 // Chave para localStorage
 const STORAGE_KEY = 'edu_tech_progress';
@@ -59,7 +59,6 @@ function updateLessonCards() {
             card.style.opacity = '0.5';
             card.style.filter = 'grayscale(100%)';
             card.style.cursor = 'not-allowed';
-            // card.style.pointerEvents = 'none'; // Permitir clique para mostrar aviso se quiser
             card.onclick = (e) => {
                 e.preventDefault();
                 alert('Complete a aula anterior para desbloquear esta!');
@@ -79,7 +78,6 @@ function updateLessonCards() {
         if (isCompleted) {
             card.style.borderColor = '#10b981';
             card.style.borderWidth = '3px';
-            // Adicionar indicador visual de completo se não tiver
             if (!card.querySelector('.completed-badge')) {
                 const badge = document.createElement('div');
                 badge.className = 'completed-badge absolute top-2 right-2 bg-green-500 text-white rounded-full p-1';
@@ -101,7 +99,6 @@ function updateTocItems() {
         const isUnlocked = isLessonUnlocked(lessonNum);
         const isCompleted = completedLessons.has(lessonNum);
 
-        // Resetar estilos base
         item.classList.remove('opacity-50', 'grayscale', 'cursor-not-allowed', 'bg-green-100');
 
         if (!isUnlocked) {
@@ -127,20 +124,98 @@ function updateTocItems() {
     });
 }
 
-// Inicialização Global
-document.addEventListener('DOMContentLoaded', () => {
-    updateUI();
+// NOVA FUNÇÃO: Renderização de Aulas Refatoradas (Suporte a Main Layout)
+function initLessonPage() {
+    const body = document.body;
+    const lessonIdStr = body.getAttribute('data-lesson-id');
 
-    // Tratamento para botões de "Próxima Aula/Página" que marcam conclusão
-    // Exemplo: Botão "Próximo" na Aula 1 que leva à Aula 2 (ou menu) e marca Aula 1 como feita
+    // Se não tiver data-lesson-id, não é uma página de aula refatorada
+    if (!lessonIdStr) return;
+
+    // Verificar dependências
+    if (typeof lessonConfig === 'undefined' || typeof renderMainLayout === 'undefined') {
+        console.error('Dependências (config.js, components.js) não carregadas.');
+        return;
+    }
+
+    const lessonId = parseInt(lessonIdStr);
+
+    // MODO MAIN LAYOUT: Procura por template de conteúdo
+    const contentTemplate = document.getElementById('lesson-content');
+
+    if (contentTemplate) {
+        // Extrai conteúdo do template
+        const contentHTML = contentTemplate.innerHTML;
+
+        // Gera o layout completo
+        const fullPageHTML = renderMainLayout(lessonId, contentHTML);
+
+        // Injeta no body (mantendo os scripts que estão no head/final do body se necessário, 
+        // mas aqui estamos substituindo o innerHTML do body todo, o que pode matar scripts inline do body se houver.
+        // Como nossos scripts estão no head com defer, eles já rodaram ou estão rodando.
+        // O ideal é inserir DENTRO do body, preservando o que não deve ser sobrescrito?
+        // Neste caso, vamos sobrescrever o innerHTML do body, pois o script.js é externo e já está na memória.
+
+        // Hack para evitar layout shift visual: body já deve estar hidden ou estilizado
+        document.body.innerHTML = fullPageHTML;
+
+        // Re-attach events (pois o DOM foi reescrito)
+        attachNavigationEvents(lessonId);
+    } else {
+        // MODO LEGADO/PARCIAL (sem template, apenas placeholders)
+        // Mantido para compatibilidade se algo falhar ou template não existir
+        const headerContainer = document.getElementById('lesson-header-placeholder');
+        if (headerContainer) headerContainer.innerHTML = renderLessonHeader(lessonId);
+
+        const footerContainer = document.getElementById('lesson-footer-placeholder');
+        if (footerContainer) {
+            // Precisamos da lógica de botões aqui manualmente se não usar o MainLayout
+            // Mas como components.js agora tem renderLessonFooterButtons separada, ok.
+            // Simplificação: vamos focar no MainLayout. Se falhar, não faz nada.
+        }
+
+        const backContainer = document.getElementById('back-link-container');
+        if (backContainer) backContainer.innerHTML = renderBackLink();
+
+        attachNavigationEvents(lessonId);
+    }
+}
+
+function attachNavigationEvents(lessonId) {
     const completeBtn = document.getElementById('btn-complete-lesson');
     if (completeBtn) {
         completeBtn.addEventListener('click', (e) => {
-            const lessonNum = parseInt(completeBtn.dataset.lesson);
-            if (lessonNum) {
-                completeLesson(lessonNum);
-                // O href do link cuidará da navegação
+            // Se for link (<a>), evitar navegação imediata
+            if (completeBtn.tagName === 'A') {
+                // Deixa navegar naturalmente se for link, mas marca completo antes?
+                // O evento de clique dispara, marca completo.
+                // Se for link externo ou página, o browser segue.
+                completeLesson(lessonId);
+            } else {
+                // Botão
+                completeLesson(lessonId);
+                const config = lessonConfig[lessonId];
+                if (config && config.nextLessonLink) {
+                    setTimeout(() => {
+                        window.location.href = config.nextLessonLink;
+                    }, 300);
+                }
             }
+        });
+    }
+}
+
+// Inicialização Global
+document.addEventListener('DOMContentLoaded', () => {
+    initLessonPage();
+    updateUI();
+
+    // Fallback legado
+    const legacyBtn = document.getElementById('btn-complete-lesson');
+    if (legacyBtn && !document.body.hasAttribute('data-lesson-id')) {
+        legacyBtn.addEventListener('click', (e) => {
+            const lessonNum = parseInt(legacyBtn.dataset.lesson);
+            if (lessonNum) completeLesson(lessonNum);
         });
     }
 });
